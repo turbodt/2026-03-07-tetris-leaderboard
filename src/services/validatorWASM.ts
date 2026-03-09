@@ -1,7 +1,9 @@
 import { WASI } from 'node:wasi';
 import fs from 'node:fs';
 import path from 'node:path';
-import { AppError } from './base.js';
+import { AppError } from '../base.js';
+import type { AsyncInitializable, ReplayReader, ReplayValidator } from '../models.js';
+import { ServiceNotLoadedError } from './errors.js';
 
 
 type WasmPtr = number;
@@ -15,10 +17,13 @@ export class ValidationError extends AppError {
 };
 
 
-export class ReplayValidator {
+export class ReplayValidatorWASM
+implements ReplayValidator, AsyncInitializable {
+    private _reader: ReplayReader | null = null;
     private engines = new Map<string, { instance: WebAssembly.Instance; exports: any }>();
 
-    async init() {
+    async initialize(reader: ReplayReader): Promise<void> {
+        this._reader = reader;
         const filenames = fs.readdirSync(ASSETS_DIR);
 
         const instances = filenames
@@ -45,7 +50,7 @@ export class ReplayValidator {
 
 
     public validate(replayData: Uint8Array): boolean {
-        const version = this.extractVersion(replayData);
+        const version = this.reader.getVersionString(replayData);
         const engine = this.engines.get(version);
         if (!engine) {
             throw new ValidationError(`Unknown version ${version}.`);
@@ -69,7 +74,7 @@ export class ReplayValidator {
     }
 
     private writeIntoWasmBuff(replayData: Uint8Array): WasmPtr {
-        const version = this.extractVersion(replayData);
+        const version = this.reader.getVersionString(replayData);
         const engine = this.engines.get(version);
         if (!engine) {
             throw new ValidationError(`Unknown version ${version}.`);
@@ -107,9 +112,11 @@ export class ReplayValidator {
         return instance;
     }
 
-    private extractVersion(replayData: Uint8Array): string {
-        const n = new DataView(replayData.buffer).getInt32(0);
-        return `${n>>24}.${0xFF & (n >> 16)}.${0xFFFF & n}`;
-    }
+    public get reader(): ReplayReader {
+        if (this._reader === null) {
+            throw new ServiceNotLoadedError('ReplayReader');
+        }
 
+        return this._reader;
+    }
 }

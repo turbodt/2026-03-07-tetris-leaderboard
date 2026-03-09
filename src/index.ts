@@ -1,18 +1,20 @@
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
-import { ReplayValidator } from './validator.js';
+import { LocalServiceProvider } from './services/local.js';
+import type { AsyncInitializable, ServiceContainer } from './models.js';
 
 const app = new Hono();
-const validator = new ReplayValidator();
+const services: ServiceContainer & AsyncInitializable = new LocalServiceProvider();
 
-// Inicialitzem el validador un cop al arrencar el servei
-validator.init().then(() => {
-    console.log('✅ Validador WASM ready');
-});
+
+services.initialize();
 
 
 app.post('/validate', async (c) => {
     try {
+
+        const { validator } = services;
+
         const body = await c.req.arrayBuffer();
         const replayData = new Uint8Array(body);
 
