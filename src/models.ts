@@ -3,7 +3,6 @@ export interface LeaderboardEntry {
     timestamp: bigint;
     seed: number;
     version: number;
-    position: number;
     score: number;
 };
 
@@ -29,14 +28,16 @@ export interface ReplayValidator {
 
 
 export interface ReplayRepository {
-    save(replayData: Uint8Array): Promise<LeaderboardEntry>;
-    get(id: LeaderboardEntryId): Promise<LeaderboardEntry>;
+    save(username: string, replayData: Uint8Array): Promise<LeaderboardEntry>;
+    get(id: LeaderboardEntryId): Promise<LeaderboardEntry | null>;
     listTopScores(limit: number): Promise<Iterable<LeaderboardEntry>>;
 };
 
 
 export interface ServiceContainer {
+    get reader(): ReplayReader;
     get validator(): ReplayValidator;
+    get repository(): ReplayRepository;
 }
 
 

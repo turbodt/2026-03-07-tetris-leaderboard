@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { LocalServiceProvider } from './services/local.js';
 import type { AsyncInitializable, ServiceContainer } from './models.js';
+import { AppError } from './base.js';
+import { ValidationError } from './services/validatorWASM.js';
 
 const app = new Hono();
 const services: ServiceContainer & AsyncInitializable = new LocalServiceProvider();
@@ -10,29 +12,59 @@ const services: ServiceContainer & AsyncInitializable = new LocalServiceProvider
 services.initialize();
 
 
-app.post('/validate', async (c) => {
+app.use(async (c, next) => {
     try {
-
-        const { validator } = services;
-
-        const body = await c.req.arrayBuffer();
-        const replayData = new Uint8Array(body);
-
-        if (replayData.length === 0) {
-            return c.json({ error: 'Empty replay' }, 400);
-        }
-
-        const isValid = validator.validate(replayData);
-        const statusCode = isValid ? 400 : 200;
-
-        return c.json({
-            valid: isValid,
-            timestamp: new Date().toISOString()
-        }, statusCode);
-
+        await next();
     } catch (err: any) {
-        return c.json({ error: err.message }, 500);
+        if (err instanceof ValidationError) {
+            c.res = c.json({ error: err.message }, 400);
+        } else {
+            c.res = c.json({ error: err.message }, 500);
+        }
     }
+});
+
+
+app.post('/validate', async (c) => {
+    const { validator } = services;
+
+    const body = await c.req.arrayBuffer();
+    const replayData = new Uint8Array(body);
+
+    if (replayData.length === 0) {
+        return c.json({ error: 'Empty replay' }, 400);
+    }
+
+    const isValid = validator.validate(replayData);
+    if (!isValid) {
+        throw new AppError("Invalid replay data");
+    }
+
+    return c.json({
+        timestamp: new Date().toISOString()
+    }, 200);
+});
+
+
+app.post('/replay', async c => {
+    const { validator, repository } = services;
+
+    const body = await c.req.arrayBuffer();
+    const replayData = new Uint8Array(body);
+
+    if (replayData.length === 0) {
+        return c.json({ error: 'Empty replay' }, 400);
+    }
+
+    const isValid = validator.validate(replayData);
+    if (!isValid) {
+        throw new AppError("Invalid replay data");
+    }
+
+    return c.json({
+        timestamp: new Date().toISOString()
+    }, 200);
+
 });
 
 

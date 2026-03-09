@@ -112,7 +112,7 @@ implements ReplayValidator, AsyncInitializable {
         return instance;
     }
 
-    public get reader(): ReplayReader {
+    private get reader(): ReplayReader {
         if (this._reader === null) {
             throw new ServiceNotLoadedError('ReplayReader');
         }
