@@ -1,15 +1,22 @@
 export interface LeaderboardEntry {
     username: string;
-    timestamp: bigint;
+    timestamp: number;
     seed: number;
     version: number;
     score: number;
 };
 
 
+export interface LeaderboardEntryReturn {
+    username: string;
+    score: number;
+    timestamp: number;
+};
+
+
 export interface LeaderboardEntryId {
     username: string;
-    timestamp: bigint;
+    timestamp: number;
 };
 
 
@@ -18,7 +25,7 @@ export interface ReplayReader {
     getVersionString(replayData: Uint8Array): string;
     getSeed(replayData: Uint8Array): number;
     getScore(replayData: Uint8Array): number;
-    getTimestamp(replayData: Uint8Array): bigint;
+    getTimestamp(replayData: Uint8Array): number;
 };
 
 

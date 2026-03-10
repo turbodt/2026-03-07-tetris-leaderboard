@@ -21,7 +21,7 @@ export class ReplayReader implements IReplayReader {
         return new DataView(replayData.buffer).getUint32(8, false);
     };
 
-    public getTimestamp(replayData: Uint8Array): bigint {
-        return new DataView(replayData.buffer).getBigUint64(28, false);
+    public getTimestamp(replayData: Uint8Array): number {
+        return Number(new DataView(replayData.buffer).getBigUint64(28, false));
     };
 }

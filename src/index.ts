@@ -1,9 +1,12 @@
+import * as z from 'zod';
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { LocalServiceProvider } from './services/local.js';
 import type { AsyncInitializable, ServiceContainer } from './models.js';
 import { AppError } from './base.js';
 import { ValidationError } from './services/validatorWASM.js';
+import { zValidator } from '@hono/zod-validator';
+import { serialize } from './serializers.js';
 
 const app = new Hono();
 const services: ServiceContainer & AsyncInitializable = new LocalServiceProvider();
@@ -12,59 +15,59 @@ const services: ServiceContainer & AsyncInitializable = new LocalServiceProvider
 services.initialize();
 
 
-app.use(async (c, next) => {
-    try {
-        await next();
-    } catch (err: any) {
-        if (err instanceof ValidationError) {
-            c.res = c.json({ error: err.message }, 400);
-        } else {
-            c.res = c.json({ error: err.message }, 500);
+app.post(
+    '/',
+    zValidator(
+        'form',
+        z.object({
+            replay: z.instanceof(File),
+            username: z.string().min(3).max(16),
+        })
+    ),
+    async c => {
+        const { validator, repository } = services;
+
+        const {replay: replayFile, username} = c.req.valid('form');
+        const replayData = new Uint8Array(await replayFile.arrayBuffer());
+
+        if (replayData.length === 0) {
+            return c.json({ error: 'Empty replay' }, 400);
         }
-    }
+
+        const isValid = validator.validate(replayData);
+        if (!isValid) {
+            throw new AppError("Invalid replay data");
+        }
+
+        const entry = await repository.save(username, replayData);
+
+        return c.json({
+            ...serialize(entry),
+            sentAt: new Date().toISOString(),
+        }, 200);
 });
 
 
-app.post('/validate', async (c) => {
-    const { validator } = services;
+app.get(
+    '/leaderboard',
+    async c => {
+        const { repository } = services;
 
-    const body = await c.req.arrayBuffer();
-    const replayData = new Uint8Array(body);
+        const entries = Array.from(await repository.listTopScores(100));
 
-    if (replayData.length === 0) {
-        return c.json({ error: 'Empty replay' }, 400);
-    }
-
-    const isValid = validator.validate(replayData);
-    if (!isValid) {
-        throw new AppError("Invalid replay data");
-    }
-
-    return c.json({
-        timestamp: new Date().toISOString()
-    }, 200);
+        return c.json({
+            entries: serialize(entries),
+            sentAt: new Date().toISOString(),
+        }, 200);
 });
 
 
-app.post('/replay', async c => {
-    const { validator, repository } = services;
-
-    const body = await c.req.arrayBuffer();
-    const replayData = new Uint8Array(body);
-
-    if (replayData.length === 0) {
-        return c.json({ error: 'Empty replay' }, 400);
+app.onError((err, c) => {
+    if (err instanceof ValidationError) {
+        return c.json({ error: err.message }, 400);
     }
 
-    const isValid = validator.validate(replayData);
-    if (!isValid) {
-        throw new AppError("Invalid replay data");
-    }
-
-    return c.json({
-        timestamp: new Date().toISOString()
-    }, 200);
-
+    return c.json({ error: err.message }, 500);
 });
 
 
