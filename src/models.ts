@@ -16,7 +16,7 @@ export interface LeaderboardEntryReturn {
 
 
 export interface LeaderboardEntryId {
-    username: string;
+    seed: number;
     timestamp: number;
 };
 

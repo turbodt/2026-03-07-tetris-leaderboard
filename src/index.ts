@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { CloudServiceProvider } from './services/cloudProvider.js';
 import type { AsyncInitializable, LeaderboardEntry, ServiceContainer } from './models.js';
-import { AppError } from './base.js';
+import { AppError } from './errors.js';
 import { ValidationError } from './services/validatorWASM.js';
 import { zValidator } from '@hono/zod-validator';
 import { serialize } from './serializers.js';

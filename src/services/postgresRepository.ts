@@ -3,10 +3,10 @@ import type {
     AsyncInitializable,
     LeaderboardEntry,
     LeaderboardEntryId,
-    ReplayReader,
     ReplayRepository,
 } from "../models.js";
 import { ServiceError, ServiceNotLoadedError } from "./errors.js";
+import { AlreadyExistsError, NotUniqueError } from "../errors.js";
 
 
 export class PostgresRepositoryError extends ServiceError {
@@ -33,13 +33,21 @@ implements ReplayRepository, AsyncInitializable {
     private _sql: postgres.Sql | null = null;
 
     async save(entry: LeaderboardEntry): Promise<LeaderboardEntry> {
+        const entryId: LeaderboardEntryId = this.getEntryId(entry);
+
+        if (await this.has(entryId)) {
+            throw new AlreadyExistsError(
+                `seed=${entryId.seed} and timestamp=${entryId.timestamp}`
+            );
+        }
+
         const {username, score, seed, version, filepath, timestamp } = entry;
 
         try {
             const [row] = await this.sql<DBRow[]>`
                 INSERT INTO replays (username, score, seed, version, ts, filepath)
                 VALUES (${username}, ${score}, ${seed}, ${version}, ${timestamp}, ${filepath})
-                RETURNING username, score, seed, version, ts
+                RETURNING username, score, seed, version, ts, filepath
             `;
 
             return {
@@ -57,7 +65,7 @@ implements ReplayRepository, AsyncInitializable {
 
     async listTopScores(limit: number): Promise<Iterable<LeaderboardEntry>> {
         const rows: DBRow[] = await this.sql<DBRow[]>`
-            SELECT username, score, seed, version, ts
+            SELECT username, score, seed, version, ts, filepath
             FROM replays
             ORDER BY score DESC
             LIMIT ${limit}
@@ -73,8 +81,33 @@ implements ReplayRepository, AsyncInitializable {
         }));
     }
 
-    async get(_id: LeaderboardEntryId): Promise<LeaderboardEntry | null> {
-        return null;
+    async get(id: LeaderboardEntryId): Promise<LeaderboardEntry | null> {
+        const rows: DBRow[] = await this.sql<DBRow[]>`
+            SELECT username, score, seed, version, ts, filepath
+            FROM replays
+            WHERE seed = ${id.seed}
+                AND ts = TO_TIMESTAMP(${id.timestamp/1000})
+        `;
+
+        switch (rows.length) {
+            case 0:
+                return null;
+            case 1:
+                break;
+            default:
+                throw new NotUniqueError(`entry`);
+        };
+
+        const row = rows[0];
+
+        return {
+            username: row.username,
+            score: row.score,
+            seed: Number(row.seed),
+            version: Number(row.version),
+            filepath: row.filepath,
+            timestamp: new Date(row.ts).getTime()
+        };
     }
 
     public async initialize(): Promise<void> {
@@ -116,6 +149,15 @@ implements ReplayRepository, AsyncInitializable {
         this._sql = postgres(url, {
             prepare: true,
         });
+    }
+
+    private async has(id: LeaderboardEntryId): Promise<boolean> {
+        const entry = await this.get(id);
+        return entry !== null;
+    }
+
+    private getEntryId(entry: LeaderboardEntry): LeaderboardEntryId {
+        return {seed: entry.seed, timestamp: entry.timestamp};
     }
 
     private get sql(): postgres.Sql {
