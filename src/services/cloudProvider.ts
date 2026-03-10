@@ -37,10 +37,10 @@ implements ServiceContainer, AsyncInitializable {
             console.log('✅ Validador WASM ready.');
         });
         await this._repository.initialize().then(() => {
-            console.log('✅ Memory repository ready.');
+            console.log('✅ Postgres repository ready.');
         });
         await this._storage.initialize(this.reader).then(() => {
-            console.log('✅ Storage repository ready.');
+            console.log('✅ S3 Storage ready.');
         });
     };
 
