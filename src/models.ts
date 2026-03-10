@@ -4,6 +4,7 @@ export interface LeaderboardEntry {
     seed: number;
     version: number;
     score: number;
+    filepath: string;
 };
 
 
@@ -15,7 +16,7 @@ export interface LeaderboardEntryReturn {
 
 
 export interface LeaderboardEntryId {
-    username: string;
+    seed: number;
     timestamp: number;
 };
 
@@ -35,9 +36,17 @@ export interface ReplayValidator {
 
 
 export interface ReplayRepository {
-    save(username: string, replayData: Uint8Array): Promise<LeaderboardEntry>;
+    save(entry: LeaderboardEntry): Promise<LeaderboardEntry>;
     get(id: LeaderboardEntryId): Promise<LeaderboardEntry | null>;
     listTopScores(limit: number): Promise<Iterable<LeaderboardEntry>>;
+};
+
+
+export interface ReplayStorage {
+    getHashFilepath(replayData: Uint8Array): string;
+    save(filepath: string, replayData: Uint8Array): Promise<void>;
+    get(filepath: string): Promise<Uint8Array>;
+    remove(filepath: string): Promise<void>;
 };
 
 
@@ -45,6 +54,7 @@ export interface ServiceContainer {
     get reader(): ReplayReader;
     get validator(): ReplayValidator;
     get repository(): ReplayRepository;
+    get storage(): ReplayStorage;
 }
 
 

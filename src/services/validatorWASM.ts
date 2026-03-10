@@ -1,7 +1,7 @@
 import { WASI } from 'node:wasi';
 import fs from 'node:fs';
 import path from 'node:path';
-import { AppError } from '../base.js';
+import { AppError } from '../errors.js';
 import type { AsyncInitializable, ReplayReader, ReplayValidator } from '../models.js';
 import { ServiceNotLoadedError } from './errors.js';
 

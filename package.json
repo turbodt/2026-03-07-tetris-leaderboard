@@ -7,9 +7,12 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1005.0",
     "@hono/node-server": "^1.19.11",
     "@hono/zod-validator": "^0.7.6",
+    "dotenv": "^17.3.1",
     "hono": "^4.12.5",
+    "postgres": "^3.4.8",
     "zod": "^4.3.6"
   },
   "devDependencies": {

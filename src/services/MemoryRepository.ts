@@ -1,44 +1,36 @@
+import { AlreadyExistsError } from "../errors.js";
 import type {
     LeaderboardEntry,
     LeaderboardEntryId,
-    ReplayReader,
     ReplayRepository
 } from "../models.js";
-import { ServiceNotLoadedError } from "./errors.js";
 
 
-type EntryMap = Map<LeaderboardEntry['timestamp'], Map<string, LeaderboardEntry>>;
+type EntryMap = Map<LeaderboardEntry['timestamp'], Map<LeaderboardEntry['seed'], LeaderboardEntry>>;
 
 export class MemoryRepository
 implements ReplayRepository {
     private entries: EntryMap;
     private scoreTable: Array<{score: LeaderboardEntry['score'], id: LeaderboardEntryId}>;
-    private _reader: ReplayReader | null = null;
 
     public constructor() {
         this.entries = new Map();
         this.scoreTable = [];
     }
 
-    async initialize(reader: ReplayReader): Promise<void> {
-        this._reader = reader;
-    }
-
-    public async save(
-        username: string,
-        replayData: Uint8Array,
-    ): Promise<LeaderboardEntry> {
-        const entry = this.extractEntry(username, replayData);
+    public async save(entry: LeaderboardEntry): Promise<LeaderboardEntry> {
         const id = this.getEntryId(entry);
 
         const existentEntry = this.getEntry(id);
         this.setEntry(entry);
 
-        if (!existentEntry) {
-            this.insertScore(entry.score, id);
-        } else {
-            // TODO
-        };
+        if (existentEntry !== null) {
+            throw new AlreadyExistsError(
+                `seed=${id.seed} and timestamp=${id.timestamp}`
+            );
+        }
+        ;
+        this.insertScore(entry.score, id);
 
         return entry;
     };
@@ -63,14 +55,6 @@ implements ReplayRepository {
         return entries;
     };
 
-    private get reader(): ReplayReader {
-        if (this._reader === null) {
-            throw new ServiceNotLoadedError('ReplayReader');
-        }
-
-        return this._reader;
-    }
-
     private insertScore(
         score: LeaderboardEntry['score'],
         id: LeaderboardEntryId,
@@ -89,38 +73,25 @@ implements ReplayRepository {
         this.scoreTable.splice(i, 0, {score, id});
     }
 
-    private extractEntry(
-        username: string,
-        replayData: Uint8Array,
-    ): LeaderboardEntry {
-        return {
-            username,
-            timestamp: this.reader.getTimestamp(replayData),
-            seed: this.reader.getSeed(replayData),
-            version: this.reader.getVersion(replayData),
-            score: this.reader.getScore(replayData),
-        };
-    }
-
     private getEntryId(entry: LeaderboardEntry): LeaderboardEntryId {
-        return {username: entry.username, timestamp: entry.timestamp};
+        return {seed: entry.seed, timestamp: entry.timestamp};
     }
 
     private getEntry(
-        {username, timestamp}: LeaderboardEntryId,
+        {seed, timestamp}: LeaderboardEntryId,
     ): LeaderboardEntry | undefined {
-        return this.entries.get(timestamp)?.get(username);
+        return this.entries.get(timestamp)?.get(seed);
     }
 
     private setEntry(entry: LeaderboardEntry,): EntryMap {
         const m1 = this.entries.get(entry.timestamp);
 
         if (m1 === undefined) {
-            const m2 = new Map<string, LeaderboardEntry>();
-            m2.set(entry.username, entry);
+            const m2 = new Map<number, LeaderboardEntry>();
+            m2.set(entry.seed, entry);
             this.entries.set(entry.timestamp, m2);
         } else {
-            m1.set(entry.username, entry);
+            m1.set(entry.seed, entry);
         }
 
         return this.entries;

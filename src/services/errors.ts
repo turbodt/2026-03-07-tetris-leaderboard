@@ -1,4 +1,4 @@
-import { AppError } from "../base.js";
+import { AppError } from "../errors.js";
 
 
 export class ServiceError extends AppError {
