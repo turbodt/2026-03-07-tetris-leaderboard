@@ -2,7 +2,7 @@ import * as z from 'zod';
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { CloudServiceProvider } from './services/cloudProvider.js';
-import type { AsyncInitializable, ServiceContainer } from './models.js';
+import type { AsyncInitializable, LeaderboardEntry, ServiceContainer } from './models.js';
 import { AppError } from './base.js';
 import { ValidationError } from './services/validatorWASM.js';
 import { zValidator } from '@hono/zod-validator';
@@ -25,7 +25,7 @@ app.post(
         })
     ),
     async c => {
-        const { validator, repository } = services;
+        const { reader, validator, repository, storage } = services;
 
         const {replay: replayFile, username} = c.req.valid('form');
         const replayData = new Uint8Array(await replayFile.arrayBuffer());
@@ -39,10 +39,20 @@ app.post(
             throw new AppError("Invalid replay data");
         }
 
-        const entry = await repository.save(username, replayData);
+        const entry: LeaderboardEntry = {
+            username,
+            timestamp: reader.getTimestamp(replayData),
+            seed: reader.getSeed(replayData),
+            version: reader.getVersion(replayData),
+            score: reader.getScore(replayData),
+            filepath: storage.getHashFilepath(replayData),
+        };
+
+        await storage.save(entry.filepath, replayData);
+        const savedEntry = await repository.save(entry);
 
         return c.json({
-            ...serialize(entry),
+            ...serialize(savedEntry),
             sentAt: new Date().toISOString(),
         }, 200);
 });
@@ -56,8 +66,7 @@ app.get(
         const entries = Array.from(await repository.listTopScores(100));
 
         return c.json({
-            entries: serialize(entries),
-            sentAt: new Date().toISOString(),
+            items: serialize(entries),
         }, 200);
 });
 

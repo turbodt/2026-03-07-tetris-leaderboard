@@ -24,11 +24,7 @@ implements ReplayRepository {
         this._reader = reader;
     }
 
-    public async save(
-        username: string,
-        replayData: Uint8Array,
-    ): Promise<LeaderboardEntry> {
-        const entry = this.extractEntry(username, replayData);
+    public async save(entry: LeaderboardEntry): Promise<LeaderboardEntry> {
         const id = this.getEntryId(entry);
 
         const existentEntry = this.getEntry(id);

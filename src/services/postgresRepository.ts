@@ -30,23 +30,15 @@ interface DBRow {
 
 export class PostgresRepository
 implements ReplayRepository, AsyncInitializable {
-    private _reader: ReplayReader | null = null;
     private _sql: postgres.Sql | null = null;
 
-    async save(username: string, replayData: Uint8Array): Promise<LeaderboardEntry> {
-        const version = this.reader.getVersion(replayData);
-        const score = this.reader.getScore(replayData);
-        const seed = this.reader.getSeed(replayData);
-
-        const majorVersion = version >> 24;
-
-        const fileName = `v${majorVersion}/${Date.now()}_${username}.replay`;
-        // TODO: this.uploadToStorage(fileName, replayData)
+    async save(entry: LeaderboardEntry): Promise<LeaderboardEntry> {
+        const {username, score, seed, version, filepath, timestamp } = entry;
 
         try {
             const [row] = await this.sql<DBRow[]>`
                 INSERT INTO replays (username, score, seed, version, ts, filepath)
-                VALUES (${username}, ${score}, ${seed}, ${version}, NOW(), ${fileName})
+                VALUES (${username}, ${score}, ${seed}, ${version}, ${timestamp}, ${filepath})
                 RETURNING username, score, seed, version, ts
             `;
 
@@ -55,6 +47,7 @@ implements ReplayRepository, AsyncInitializable {
                 score: row.score,
                 seed: Number(row.seed),
                 version: Number(row.version),
+                filepath: row.filepath,
                 timestamp: new Date(row.ts).getTime()
             };
         } catch (err: any) {
@@ -75,6 +68,7 @@ implements ReplayRepository, AsyncInitializable {
             score: row.score,
             seed: Number(row.seed),
             version: Number(row.version),
+            filepath: row.filepath,
             timestamp: new Date(row.ts).getTime()
         }));
     }
@@ -83,12 +77,7 @@ implements ReplayRepository, AsyncInitializable {
         return null;
     }
 
-    public async initialize(reader: ReplayReader): Promise<void> {
-        this._reader = reader;
-        await this.initPostgres();
-    }
-
-    private async initPostgres(): Promise<void> {
+    public async initialize(): Promise<void> {
         const configParams = {
             name: 'DATABASE_NAME',
             user: 'DATABASE_USER',
@@ -127,14 +116,6 @@ implements ReplayRepository, AsyncInitializable {
         this._sql = postgres(url, {
             prepare: true,
         });
-    }
-
-    private get reader(): ReplayReader {
-        if (this._reader === null) {
-            throw new ServiceNotLoadedError('ReplayReader');
-        }
-
-        return this._reader;
     }
 
     private get sql(): postgres.Sql {
