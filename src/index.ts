@@ -1,7 +1,7 @@
 import * as z from 'zod';
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
-import { LocalServiceProvider } from './services/local.js';
+import { CloudServiceProvider } from './services/cloudProvider.js';
 import type { AsyncInitializable, ServiceContainer } from './models.js';
 import { AppError } from './base.js';
 import { ValidationError } from './services/validatorWASM.js';
@@ -9,7 +9,7 @@ import { zValidator } from '@hono/zod-validator';
 import { serialize } from './serializers.js';
 
 const app = new Hono();
-const services: ServiceContainer & AsyncInitializable = new LocalServiceProvider();
+const services: ServiceContainer & AsyncInitializable = new CloudServiceProvider();
 
 
 services.initialize();
