@@ -4,7 +4,8 @@
   "scripts": {
     "dev": "tsx watch src/node_serve.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "deploy": "wrangler deploy src/index.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1005.0",
