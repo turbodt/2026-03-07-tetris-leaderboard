@@ -1,0 +1,7 @@
+name = "tetris-leaderboard"
+main = "src/index.ts"
+compatibility_date = "2026-03-10"
+
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "0b16739fd6b14580839b89267dd56bc7"

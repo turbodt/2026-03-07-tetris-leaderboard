@@ -2,9 +2,10 @@
   "name": "2026-03-07-tetris-leaderboard",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch src/node_serve.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "deploy": "wrangler deploy src/index.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1005.0",
@@ -18,6 +19,7 @@
   "devDependencies": {
     "@types/node": "^20.11.17",
     "tsx": "^4.7.1",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "wrangler": "^4.73.0"
   }
 }
