@@ -2,7 +2,7 @@
   "name": "2026-03-07-tetris-leaderboard",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch src/node_serve.ts",
     "build": "tsc",
     "start": "node dist/index.js"
   },
