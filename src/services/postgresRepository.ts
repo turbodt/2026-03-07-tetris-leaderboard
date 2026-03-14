@@ -1,5 +1,6 @@
 import postgres from "postgres";
 import type {
+    AsyncDisposable,
     AsyncInitializable,
     LeaderboardEntry,
     LeaderboardEntryId,
@@ -34,8 +35,13 @@ interface DBRow {
 
 
 export class PostgresRepository
-implements ReplayRepository, AsyncInitializable {
+implements ReplayRepository, AsyncInitializable, AsyncDisposable {
+    private config: PostgresConfig;
     private _sql: postgres.Sql | null = null;
+
+    public constructor(config: PostgresConfig) {
+        this.config = config;
+    }
 
     async save(entry: LeaderboardEntry): Promise<LeaderboardEntry> {
         const entryId: LeaderboardEntryId = this.getEntryId(entry);
@@ -116,44 +122,16 @@ implements ReplayRepository, AsyncInitializable {
     }
 
     public async initialize(): Promise<void> {
-        const configParams = {
-            name: 'DATABASE_NAME',
-            user: 'DATABASE_USER',
-            password: 'DATABASE_PASSWORD',
-            port: 'DATABASE_PORT',
-            host: 'DATABASE_HOST',
-        };
-        const config = Object.entries(configParams).reduce(
-            (acc, [key, paramName]) => {
-                return {...acc, [key]: process.env[paramName]};
-            },
-            {}
-        ) as {
-            name: string;
-            user: string;
-            password: string;
-            port: string;
-            host: string;
-        };
-
-        const errors = Object.entries(config)
-            .filter(([_, value]) => value === undefined)
-            .map(([key,_]): PostgresRepositoryError =>
-                new PostgresRepositoryError(`${key} not found`)
-            );
-
-        if (errors.length) {
-            throw errors[0];
-        }
-
-        const url = `postgresql://`
-            + `${config.user}:${config.password}`
-            + `@${config.host}:${config.port}/${config.name}`;
-
-        console.log(`Connecting to ${url}`);
-        this._sql = postgres(url, {
-            prepare: true,
+        console.log(`Connecting to ${this.config.connectionString}`);
+        this._sql = postgres(this.config.connectionString, {
+            prepare: false,
+            ssl: 'require',
+            max: 1,
         });
+    }
+
+    public async dispose(): Promise<void> {
+        await this.sql.end();
     }
 
     private async has(id: LeaderboardEntryId): Promise<boolean> {
