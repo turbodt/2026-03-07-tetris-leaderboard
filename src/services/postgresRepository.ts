@@ -9,6 +9,11 @@ import { ServiceError, ServiceNotLoadedError } from "./errors.js";
 import { AlreadyExistsError, NotUniqueError } from "../errors.js";
 
 
+export interface PostgresConfig {
+    connectionString: string;
+};
+
+
 export class PostgresRepositoryError extends ServiceError {
     public constructor(message: string) {
         super('PostgresRepository', message);

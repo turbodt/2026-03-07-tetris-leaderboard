@@ -4,7 +4,17 @@ import { ServiceError, ServiceNotLoadedError } from "./errors.js";
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import type { ReplayReader } from './replayReader.js';
 
+
 dns.setDefaultResultOrder('ipv4first');
+
+
+export interface S3Config {
+    region: string;
+    endpoint: string;
+    accessKeyId: string;
+    secretAccessKey: string;
+}
+
 
 export class S3StorageError extends ServiceError {
     public constructor(message: string) {

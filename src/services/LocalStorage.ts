@@ -3,6 +3,10 @@ import { dirname, join } from 'node:path';
 import type { AsyncInitializable, ReplayReader, ReplayStorage } from '../models.js';
 import { ServiceNotLoadedError } from './errors.js';
 
+export interface LocalStorageConfig {
+    baseDir: string;
+};
+
 export class LocalStorage
 implements ReplayStorage, AsyncInitializable {
     private readonly baseDir = '/tmp/tetris-replays/';

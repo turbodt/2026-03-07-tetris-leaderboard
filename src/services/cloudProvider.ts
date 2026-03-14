@@ -7,10 +7,15 @@ import type {
 } from "../models.js";
 import { ServiceNotLoadedError } from "./errors.js";
 import { ReplayReader } from "./replayReader.js";
-import { PostgresRepository } from "./postgresRepository.js";
+import { PostgresRepository, type PostgresConfig } from "./postgresRepository.js";
 import { ReplayValidatorWASM } from "./validatorWASM.js";
-import { S3Storage } from './S3Storage.js';
+import { S3Storage, type S3Config } from './S3Storage.js';
 
+
+export interface CloudServiceProviderConfig {
+    storage: S3Config,
+    repository: PostgresConfig,
+}
 
 
 export class CloudServiceProvider
