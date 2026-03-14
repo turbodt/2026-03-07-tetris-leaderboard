@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import type {
     ServiceContainer,
     AsyncInitializable,
