@@ -4,6 +4,11 @@ compatibility_date = "2026-03-13"
 compatibility_flags = [ "nodejs_compat" ]
 preview_urls = true
 
+[vars]
+S3_REGION = "eu-west-3"
+S3_ENDPOINT = "https://uktpjcjcyekaabkvlzri.storage.supabase.co/storage/v1/s3"
+
+
 [[hyperdrive]]
 binding = "HYPERDRIVE"
 id = "0b16739fd6b14580839b89267dd56bc7"
