@@ -8,13 +8,14 @@ import type {
 import { ServiceNotLoadedError } from "./errors.js";
 import { ReplayReader } from "./replayReader.js";
 import { PostgresRepository, type PostgresConfig } from "./postgresRepository.js";
-import { ReplayValidatorWASM } from "./validatorWASM.js";
+import { ReplayValidatorWASM, type ValidatorWASMConfig } from "./validatorWASM.js";
 import { S3Storage, type S3Config } from './S3Storage.js';
 
 
 export interface CloudServiceProviderConfig {
     storage: S3Config,
     repository: PostgresConfig,
+    validator: ValidatorWASMConfig,
 }
 
 
@@ -35,7 +36,7 @@ implements ServiceContainer, AsyncInitializable, AsyncDisposable {
     }
 
     public async initialize(): Promise<void> {
-        this._validator = new ReplayValidatorWASM();
+        this._validator = new ReplayValidatorWASM(this.config.validator);
         this._repository = new PostgresRepository(this.config.repository);
         this._storage = new S3Storage(this.config.storage);
 

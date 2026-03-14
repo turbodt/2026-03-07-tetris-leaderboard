@@ -12,3 +12,9 @@ S3_ENDPOINT = "https://uktpjcjcyekaabkvlzri.storage.supabase.co/storage/v1/s3"
 [[hyperdrive]]
 binding = "HYPERDRIVE"
 id = "0b16739fd6b14580839b89267dd56bc7"
+
+
+[[rules]]
+type = "CompiledWasm"
+globs = ["**/*.wasm"]
+fallthrough = true

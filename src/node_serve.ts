@@ -1,4 +1,7 @@
 import 'dotenv/config';
+import fs from 'node:fs';
+import path from 'node:path';
+import { WASI } from 'node:wasi';
 import { serve } from "@hono/node-server";
 import { createApp } from "./app.js";
 import type { ServiceContainer } from './models.js';
@@ -7,8 +10,10 @@ import type { S3Config } from './services/S3Storage.js';
 import { ConfigError } from './services/errors.js';
 import { CloudServiceProvider } from './services/cloudProvider.js';
 import type { PostgresConfig } from './services/postgresRepository.js';
+import type { ValidatorWASMConfig } from './services/validatorWASM.js';
 
 
+const ASSETS_DIR = "./assets";
 const configMiddleware = createMiddleware<{
     Variables: {
         services: ServiceContainer,
@@ -74,9 +79,40 @@ const configMiddleware = createMiddleware<{
         );
     }
 
+    const testerVersions = fs.readdirSync(ASSETS_DIR)
+        .map((filename): [string, RegExpMatchArray | null] => ([
+            filename,
+            filename.match(/test-v?([\d\.]+)\.wasm/)
+        ]))
+        .filter((arr): arr is [string, RegExpMatchArray] => arr[1] !== null)
+        .map(([_filename, match]: [string, RegExpMatchArray]) => match[1]);
+
+    const validatorConfig: ValidatorWASMConfig = {
+        versions: testerVersions,
+        loader: async (v) => {
+            const buffer = fs.readFileSync(
+                path.join(ASSETS_DIR, `test-v${v}.wasm`)
+            );
+
+            const wasi = new WASI({ version: 'preview1' });
+
+            const { instance } = await WebAssembly.instantiate(buffer, {
+                wasi_snapshot_preview1: wasi.wasiImport,
+            });
+
+            if ((instance.exports as any)._initialize) {
+                (instance.exports as any)._initialize();
+            } else {
+                wasi.initialize(instance);
+            }
+            return instance;
+        }
+    };
+
     const services = new CloudServiceProvider({
         storage: storageConfig,
         repository: postgresConfig,
+        validator: validatorConfig,
     });
     await services.initialize();
 

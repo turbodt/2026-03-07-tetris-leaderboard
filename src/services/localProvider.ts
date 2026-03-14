@@ -9,12 +9,13 @@ import { ServiceNotLoadedError } from "./errors.js";
 import { LocalStorage, type LocalStorageConfig } from "./LocalStorage.js";
 import { MemoryRepository } from "./MemoryRepository.js";
 import { ReplayReader } from "./replayReader.js";
-import { ReplayValidatorWASM } from "./validatorWASM.js";
+import { ReplayValidatorWASM, type ValidatorWASMConfig } from "./validatorWASM.js";
 
 
 
 export interface LocalServiceProviderConfig {
     storage: LocalStorageConfig,
+    validator: ValidatorWASMConfig,
 };
 
 
@@ -36,7 +37,7 @@ implements ServiceContainer, AsyncInitializable {
     }
 
     public async initialize(): Promise<void> {
-        this._validator = new ReplayValidatorWASM();
+        this._validator = new ReplayValidatorWASM(this.config.validator);
         this._repository = new MemoryRepository();
         this._storage = new LocalStorage(this.config.storage);
 

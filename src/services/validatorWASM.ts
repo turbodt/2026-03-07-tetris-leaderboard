@@ -1,13 +1,15 @@
-import { WASI } from 'node:wasi';
-import fs from 'node:fs';
-import path from 'node:path';
 import { AppError } from '../errors.js';
 import type { AsyncInitializable, ReplayReader, ReplayValidator } from '../models.js';
 import { ServiceNotLoadedError } from './errors.js';
 
 
+export interface ValidatorWASMConfig {
+    versions: string[];
+    loader(v:string): Promise<WebAssembly.Instance>;
+};
+
+
 type WasmPtr = number;
-const ASSETS_DIR = './assets';
 
 export class ValidationError extends AppError {
     public constructor(message: string) {
@@ -19,25 +21,22 @@ export class ValidationError extends AppError {
 
 export class ReplayValidatorWASM
 implements ReplayValidator, AsyncInitializable {
+    private config: ValidatorWASMConfig;
     private _reader: ReplayReader | null = null;
     private engines = new Map<string, { instance: WebAssembly.Instance; exports: any }>();
 
+    public constructor(config: ValidatorWASMConfig) {
+        this.config = config;
+    }
+
     async initialize(reader: ReplayReader): Promise<void> {
         this._reader = reader;
-        const filenames = fs.readdirSync(ASSETS_DIR);
 
-        const instances = filenames
-            .map((filename): [string, RegExpMatchArray | null] => ([
-                filename,
-                filename.match(/test-v?([\d\.]+)\.wasm/)
-            ]))
-            .filter((arr): arr is [string, RegExpMatchArray] => arr[1] !== null)
-            .map(([filename, match]: [string, RegExpMatchArray]) => ([filename, match[1]]))
-            .map(async ([filename, version]): Promise<[WebAssembly.Instance, string]> => {
-                return this.loadWasmEngine(filename).then(
-                    instance => ([instance, version])
-                    );
-            });
+        const instances = this.config.versions
+        .map(async (version): Promise<[WebAssembly.Instance, string]> => {
+            const instance = await this.config.loader(version);
+            return [instance, version];
+        });
 
         (await Promise.all(instances))
             .forEach(([instance, version]) => {
@@ -93,23 +92,6 @@ implements ReplayValidator, AsyncInitializable {
         memory.set(replayData, ptr);
 
         return ptr;
-    }
-
-    private async loadWasmEngine(filename: string): Promise<WebAssembly.Instance> {
-        const wasi = new WASI({ version: 'preview1' });
-        const wasmBuffer = fs.readFileSync(path.join(ASSETS_DIR, filename));
-
-        const { instance } = await WebAssembly.instantiate(wasmBuffer, {
-            wasi_snapshot_preview1: wasi.wasiImport,
-        });
-
-        if ((instance.exports as any)._initialize) {
-            (instance.exports as any)._initialize();
-        } else {
-            wasi.initialize(instance);
-        }
-
-        return instance;
     }
 
     private get reader(): ReplayReader {
