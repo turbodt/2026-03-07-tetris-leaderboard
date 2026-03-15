@@ -1,7 +1,7 @@
 import * as z from 'zod';
 import { Hono, type MiddlewareHandler } from 'hono';
-import type { LeaderboardEntry, ServiceContainer } from './models.js';
-import { AppError } from './errors.js';
+import type { LeaderboardEntry, LeaderboardEntryId, ServiceContainer } from './models.js';
+import { AlreadyExistsError, AppError } from './errors.js';
 import { ValidationError } from './services/validatorWASM.js';
 import { zValidator } from '@hono/zod-validator';
 import { serialize } from './serializers.js';
@@ -56,6 +56,14 @@ export function createApp(middleware: MiddlewareHandler<{
                 score: reader.getScore(replayData),
                 filepath: storage.getHashFilepath(replayData),
             };
+            const entryId: LeaderboardEntryId = {...entry};
+
+            const existingEntry = await repository.get(entryId);
+            if (existingEntry !== null) {
+                throw new AlreadyExistsError(
+                    `seed=${entryId.seed} and timestamp=${entryId.timestamp}`
+                );
+            }
 
             await storage.save(entry.filepath, replayData);
             const savedEntry = await repository.save(entry);
@@ -78,7 +86,6 @@ export function createApp(middleware: MiddlewareHandler<{
                 items: serialize(entries),
             }, 200);
     });
-
 
     app.onError((err, c) => {
         if (err instanceof ValidationError) {

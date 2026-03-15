@@ -7,7 +7,7 @@ import type {
     ReplayRepository,
 } from "../models.js";
 import { ServiceError, ServiceNotLoadedError } from "./errors.js";
-import { AlreadyExistsError, NotUniqueError } from "../errors.js";
+import { NotUniqueError } from "../errors.js";
 
 
 export interface PostgresConfig {
@@ -44,14 +44,6 @@ implements ReplayRepository, AsyncInitializable, AsyncDisposable {
     }
 
     async save(entry: LeaderboardEntry): Promise<LeaderboardEntry> {
-        const entryId: LeaderboardEntryId = this.getEntryId(entry);
-
-        if (await this.has(entryId)) {
-            throw new AlreadyExistsError(
-                `seed=${entryId.seed} and timestamp=${entryId.timestamp}`
-            );
-        }
-
         const {username, score, seed, version, filepath, timestamp } = entry;
 
         try {
@@ -131,15 +123,6 @@ implements ReplayRepository, AsyncInitializable, AsyncDisposable {
 
     public async dispose(): Promise<void> {
         await this.sql.end();
-    }
-
-    private async has(id: LeaderboardEntryId): Promise<boolean> {
-        const entry = await this.get(id);
-        return entry !== null;
-    }
-
-    private getEntryId(entry: LeaderboardEntry): LeaderboardEntryId {
-        return {seed: entry.seed, timestamp: entry.timestamp};
     }
 
     private get sql(): postgres.Sql {
