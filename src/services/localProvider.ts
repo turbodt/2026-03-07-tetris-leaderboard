@@ -6,21 +6,30 @@ import type {
     ReplayStorage
 } from "../models.js";
 import { ServiceNotLoadedError } from "./errors.js";
-import { LocalStorage } from "./LocalStorage.js";
+import { LocalStorage, type LocalStorageConfig } from "./LocalStorage.js";
 import { MemoryRepository } from "./MemoryRepository.js";
 import { ReplayReader } from "./replayReader.js";
-import { ReplayValidatorWASM } from "./validatorWASM.js";
+import { ReplayValidatorWASM, type ValidatorWASMConfig } from "./validatorWASM.js";
+
+
+
+export interface LocalServiceProviderConfig {
+    storage: LocalStorageConfig,
+    validator: ValidatorWASMConfig,
+};
 
 
 
 export class LocalServiceProvider
 implements ServiceContainer, AsyncInitializable {
     public reader: ReplayReader;
+    private config: LocalServiceProviderConfig;
     private _validator: ReplayValidatorWASM | null;
     private _repository: MemoryRepository | null;
     private _storage: LocalStorage | null;
 
-    public constructor() {
+    public constructor(config: LocalServiceProviderConfig) {
+        this.config = config;
         this.reader =  new ReplayReader();
         this._validator = null;
         this._repository = null;
@@ -28,9 +37,9 @@ implements ServiceContainer, AsyncInitializable {
     }
 
     public async initialize(): Promise<void> {
-        this._validator = new ReplayValidatorWASM();
+        this._validator = new ReplayValidatorWASM(this.config.validator);
         this._repository = new MemoryRepository();
-        this._storage = new LocalStorage();
+        this._storage = new LocalStorage(this.config.storage);
 
         console.log('✅ Memory repository ready.');
 

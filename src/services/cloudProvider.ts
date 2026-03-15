@@ -1,27 +1,34 @@
-import 'dotenv/config';
 import type {
     ServiceContainer,
     AsyncInitializable,
+    AsyncDisposable,
     ReplayValidator,
-    ReplayRepository,
     ReplayStorage
 } from "../models.js";
 import { ServiceNotLoadedError } from "./errors.js";
 import { ReplayReader } from "./replayReader.js";
-import { PostgresRepository } from "./postgresRepository.js";
-import { ReplayValidatorWASM } from "./validatorWASM.js";
-import { S3Storage } from './S3Storage.js';
+import { PostgresRepository, type PostgresConfig } from "./postgresRepository.js";
+import { ReplayValidatorWASM, type ValidatorWASMConfig } from "./validatorWASM.js";
+import { S3Storage, type S3Config } from './S3Storage.js';
 
+
+export interface CloudServiceProviderConfig {
+    storage: S3Config,
+    repository: PostgresConfig,
+    validator: ValidatorWASMConfig,
+}
 
 
 export class CloudServiceProvider
-implements ServiceContainer, AsyncInitializable {
+implements ServiceContainer, AsyncInitializable, AsyncDisposable {
     public reader: ReplayReader;
+    private config: CloudServiceProviderConfig;
     private _validator: ReplayValidatorWASM | null;
     private _repository: PostgresRepository | null;
     private _storage: S3Storage | null;
 
-    public constructor() {
+    public constructor(config: CloudServiceProviderConfig) {
+        this.config = config;
         this.reader =  new ReplayReader();
         this._validator = null;
         this._repository = null;
@@ -29,9 +36,9 @@ implements ServiceContainer, AsyncInitializable {
     }
 
     public async initialize(): Promise<void> {
-        this._validator = new ReplayValidatorWASM();
-        this._repository = new PostgresRepository();
-        this._storage = new S3Storage();
+        this._validator = new ReplayValidatorWASM(this.config.validator);
+        this._repository = new PostgresRepository(this.config.repository);
+        this._storage = new S3Storage(this.config.storage);
 
         await this._validator.initialize(this.reader).then(() => {
             console.log('✅ Validador WASM ready.');
@@ -44,6 +51,10 @@ implements ServiceContainer, AsyncInitializable {
         });
     };
 
+    public async dispose(): Promise<void> {
+        await this.repository.dispose();
+    }
+
     public get validator(): ReplayValidator {
         if (this._validator === null) {
             throw new ServiceNotLoadedError('ReplayValidator');
@@ -52,7 +63,7 @@ implements ServiceContainer, AsyncInitializable {
         return this._validator;
     }
 
-    public get repository(): ReplayRepository {
+    public get repository(): PostgresRepository {
         if (this._repository === null) {
             throw new ServiceNotLoadedError('ReplayRepository');
         }

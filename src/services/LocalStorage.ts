@@ -3,17 +3,25 @@ import { dirname, join } from 'node:path';
 import type { AsyncInitializable, ReplayReader, ReplayStorage } from '../models.js';
 import { ServiceNotLoadedError } from './errors.js';
 
+export interface LocalStorageConfig {
+    baseDir: string;
+};
+
 export class LocalStorage
 implements ReplayStorage, AsyncInitializable {
-    private readonly baseDir = '/tmp/tetris-replays/';
+    private config: LocalStorageConfig;
     private _reader: ReplayReader | null = null;
+
+    public constructor(config: LocalStorageConfig) {
+        this.config = config;
+    }
 
     getHashFilepath(replayData: Uint8Array): string {
         const seed = this.reader.getSeed(replayData);
         const ts = this.reader.getTimestamp(replayData);
         const size = replayData.length;
 
-        return join(this.baseDir, `${seed}_${ts}_${size}.replay`);
+        return join(this.config.baseDir, `${seed}_${ts}_${size}.replay`);
     }
 
     async save(filepath: string, replayData: Uint8Array): Promise<void> {
@@ -23,13 +31,13 @@ implements ReplayStorage, AsyncInitializable {
     }
 
     async get(filepath: string): Promise<Uint8Array> {
-        const fullPath = join(this.baseDir, filepath);
+        const fullPath = join(this.config.baseDir, filepath);
         const buffer = await readFile(fullPath);
         return new Uint8Array(buffer);
     }
 
     async remove(filepath: string): Promise<void> {
-        const fullPath = join(this.baseDir, filepath);
+        const fullPath = join(this.config.baseDir, filepath);
         await unlink(fullPath);
     }
 

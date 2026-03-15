@@ -4,7 +4,17 @@ import { ServiceError, ServiceNotLoadedError } from "./errors.js";
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import type { ReplayReader } from './replayReader.js';
 
+
 dns.setDefaultResultOrder('ipv4first');
+
+
+export interface S3Config {
+    region: string;
+    endpoint: string;
+    accessKeyId: string;
+    secretAccessKey: string;
+}
+
 
 export class S3StorageError extends ServiceError {
     public constructor(message: string) {
@@ -16,9 +26,14 @@ export class S3StorageError extends ServiceError {
 
 export class S3Storage
 implements ReplayStorage, AsyncInitializable {
+    private config: S3Config;
     private readonly bucketName = "tetris-replays";
     private _client: S3Client | null = null;
     private _reader: ReplayReader | null = null;
+
+    public constructor(config: S3Config) {
+        this.config = config;
+    }
 
     public getHashFilepath(replayData: Uint8Array): string {
         const majorVersion = this.reader.getVersion(replayData) >> 24;
@@ -57,41 +72,13 @@ implements ReplayStorage, AsyncInitializable {
     public async initialize(reader: ReplayReader): Promise<void> {
         this._reader = reader;
 
-        const configParams = {
-            region: 'S3_REGION',
-            endpoint: 'S3_ENDPOINT',
-            accessKeyId: 'S3_ACCESS_KEY_ID',
-            secretAccessKey: 'S3_SECRET_ACCESS_KEY',
-        };
-        const config = Object.entries(configParams).reduce(
-            (acc, [key, paramName]) => {
-                return {...acc, [key]: process.env[paramName]};
-            },
-            {}
-        ) as {
-            region: string;
-            endpoint: string;
-            accessKeyId: string;
-            secretAccessKey: string;
-        };
-
-        const errors = Object.entries(config)
-            .filter(([_, value]) => value === undefined)
-            .map(([key,_]): S3StorageError =>
-                new S3StorageError(`${key} not found`)
-            );
-
-        if (errors.length) {
-            throw errors[0];
-        }
-
         this._client = new S3Client({
             forcePathStyle: true,
-            region: config.region,
-            endpoint: config.endpoint,
+            region: this.config.region,
+            endpoint: this.config.endpoint,
             credentials: {
-                accessKeyId: config.accessKeyId,
-                secretAccessKey: config.secretAccessKey,
+                accessKeyId: this.config.accessKeyId,
+                secretAccessKey: this.config.secretAccessKey,
             }
         });
     }

@@ -61,3 +61,8 @@ export interface ServiceContainer {
 export interface AsyncInitializable {
     initialize(...args: any[]): Promise<void>;
 }
+
+
+export interface AsyncDisposable {
+    dispose(...args: any[]): Promise<void>;
+}

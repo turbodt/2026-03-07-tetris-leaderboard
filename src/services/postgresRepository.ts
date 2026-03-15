@@ -1,12 +1,18 @@
 import postgres from "postgres";
 import type {
+    AsyncDisposable,
     AsyncInitializable,
     LeaderboardEntry,
     LeaderboardEntryId,
     ReplayRepository,
 } from "../models.js";
 import { ServiceError, ServiceNotLoadedError } from "./errors.js";
-import { AlreadyExistsError, NotUniqueError } from "../errors.js";
+import { NotUniqueError } from "../errors.js";
+
+
+export interface PostgresConfig {
+    connectionString: string;
+};
 
 
 export class PostgresRepositoryError extends ServiceError {
@@ -29,18 +35,15 @@ interface DBRow {
 
 
 export class PostgresRepository
-implements ReplayRepository, AsyncInitializable {
+implements ReplayRepository, AsyncInitializable, AsyncDisposable {
+    private config: PostgresConfig;
     private _sql: postgres.Sql | null = null;
 
+    public constructor(config: PostgresConfig) {
+        this.config = config;
+    }
+
     async save(entry: LeaderboardEntry): Promise<LeaderboardEntry> {
-        const entryId: LeaderboardEntryId = this.getEntryId(entry);
-
-        if (await this.has(entryId)) {
-            throw new AlreadyExistsError(
-                `seed=${entryId.seed} and timestamp=${entryId.timestamp}`
-            );
-        }
-
         const {username, score, seed, version, filepath, timestamp } = entry;
 
         try {
@@ -111,53 +114,15 @@ implements ReplayRepository, AsyncInitializable {
     }
 
     public async initialize(): Promise<void> {
-        const configParams = {
-            name: 'DATABASE_NAME',
-            user: 'DATABASE_USER',
-            password: 'DATABASE_PASSWORD',
-            port: 'DATABASE_PORT',
-            host: 'DATABASE_HOST',
-        };
-        const config = Object.entries(configParams).reduce(
-            (acc, [key, paramName]) => {
-                return {...acc, [key]: process.env[paramName]};
-            },
-            {}
-        ) as {
-            name: string;
-            user: string;
-            password: string;
-            port: string;
-            host: string;
-        };
-
-        const errors = Object.entries(config)
-            .filter(([_, value]) => value === undefined)
-            .map(([key,_]): PostgresRepositoryError =>
-                new PostgresRepositoryError(`${key} not found`)
-            );
-
-        if (errors.length) {
-            throw errors[0];
-        }
-
-        const url = `postgresql://`
-            + `${config.user}:${config.password}`
-            + `@${config.host}:${config.port}/${config.name}`;
-
-        console.log(`Connecting to ${url}`);
-        this._sql = postgres(url, {
-            prepare: true,
+        console.log(`Connecting to ${this.config.connectionString}`);
+        this._sql = postgres(this.config.connectionString, {
+            prepare: false,
+            max: 1,
         });
     }
 
-    private async has(id: LeaderboardEntryId): Promise<boolean> {
-        const entry = await this.get(id);
-        return entry !== null;
-    }
-
-    private getEntryId(entry: LeaderboardEntry): LeaderboardEntryId {
-        return {seed: entry.seed, timestamp: entry.timestamp};
+    public async dispose(): Promise<void> {
+        await this.sql.end();
     }
 
     private get sql(): postgres.Sql {
