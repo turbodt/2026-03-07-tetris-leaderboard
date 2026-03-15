@@ -125,7 +125,6 @@ implements ReplayRepository, AsyncInitializable, AsyncDisposable {
         console.log(`Connecting to ${this.config.connectionString}`);
         this._sql = postgres(this.config.connectionString, {
             prepare: false,
-            ssl: 'require',
             max: 1,
         });
     }
