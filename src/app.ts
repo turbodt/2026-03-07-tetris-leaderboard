@@ -5,6 +5,7 @@ import { AlreadyExistsError, AppError } from './errors.js';
 import { ValidationError } from './services/validatorWASM.js';
 import { zValidator } from '@hono/zod-validator';
 import { serialize } from './serializers.js';
+import { cors } from 'hono/cors';
 
 
 
@@ -22,6 +23,12 @@ export function createApp(middleware: MiddlewareHandler<{
 }>): MyApp {
     const app: MyApp = new Hono();
 
+    app.use(cors({
+        origin: '*',
+        allowMethods: ['GET', 'POST', 'OPTIONS'],
+        allowHeaders: ['Content-Type'],
+        maxAge: 600,
+    }));
     app.use(middleware);
 
     app.post(
@@ -90,6 +97,8 @@ export function createApp(middleware: MiddlewareHandler<{
     app.onError((err, c) => {
         if (err instanceof ValidationError) {
             return c.json({ error: err.message }, 400);
+        } else if (err instanceof AlreadyExistsError) {
+            return c.json({error: err.message }, 409);
         }
 
         return c.json({ error: err.message }, 500);
