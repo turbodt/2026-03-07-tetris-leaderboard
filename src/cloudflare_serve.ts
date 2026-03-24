@@ -78,6 +78,7 @@ const configMiddleware = createMiddleware<{
 
     c.set('services', services);
     await next();
+    c.header('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=30');
 
     c.executionCtx.waitUntil(services.dispose());
 });
