@@ -81,7 +81,7 @@ const configMiddleware = createMiddleware<{
 
     const path = new URL(c.req.url).pathname;
     if (path === '/leaderboard') {
-        c.header('Cache-Control', 'public, s-maxage=10, max-age=0, must-revalidate');
+        c.header('Cache-Control', 'public, s-maxage=30, max-age=0, must-revalidate');
         c.header('X-Cache-Applied', 'true');
     }
     c.executionCtx.waitUntil(services.dispose());
