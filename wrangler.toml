@@ -17,3 +17,8 @@ id = "9351bea58dfd4663b142af523ef548bc"
 type = "CompiledWasm"
 globs = ["**/*.wasm"]
 fallthrough = true
+
+[observability]
+[observability.logs]
+enabled = false
+invocation_logs = true
