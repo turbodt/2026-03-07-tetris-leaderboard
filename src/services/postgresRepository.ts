@@ -55,7 +55,7 @@ implements ReplayRepository, AsyncInitializable, AsyncDisposable {
 
             return {
                 username: row.username,
-                score: row.score,
+                score: Number(row.score),
                 seed: Number(row.seed),
                 version: Number(row.version),
                 filepath: row.filepath,
@@ -76,7 +76,7 @@ implements ReplayRepository, AsyncInitializable, AsyncDisposable {
 
         return rows.map(row => ({
             username: row.username,
-            score: row.score,
+            score: Number(row.score),
             seed: Number(row.seed),
             version: Number(row.version),
             filepath: row.filepath,
@@ -105,7 +105,7 @@ implements ReplayRepository, AsyncInitializable, AsyncDisposable {
 
         return {
             username: row.username,
-            score: row.score,
+            score: Number(row.score),
             seed: Number(row.seed),
             version: Number(row.version),
             filepath: row.filepath,
